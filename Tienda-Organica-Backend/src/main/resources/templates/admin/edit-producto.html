@@ -19,15 +19,10 @@
             <a class="navbar-brand fw-bold" href="/admin/dashboard">Panel de Administración</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a class="nav-link" href="/admin/dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/admin/pedidos">Pedidos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
-
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/}" target="_blank"
-                            title="Ver la página como visitante en una nueva pestaña">
-                            Ver Sitio
-                        </a>
-                    </li>
                     <li class="nav-item ms-3">
                         <form th:action="@{/logout}" method="post"><button type="submit"
                                 class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
@@ -36,7 +31,6 @@
             </div>
         </div>
     </nav>
-
     <div class="container my-5">
         <div class="row justify-content-center">
             <div class="col-lg-8">
@@ -74,7 +68,7 @@
 
                             <div class="mb-3">
                                 <label for="categoria" class="form-label">Categoría</label>
-                                <select class="form-control" id="categoria" name="categoria" required>
+                                <select class="form-control" id="categoria" th:field="*{categoria}" required>
                                     <option value="">Seleccione una categoría</option>
                                     <option value="Superfoods">Superfoods (Andinos y Amazónicos)</option>
                                     <option value="Despensa Saludable">Despensa Saludable</option>
@@ -101,7 +95,7 @@
 
     <footer class="bg-dark text-white pt-5 pb-4">
         <div class="container text-center">
-            <p class="text-muted-footer">&copy; 2025 TiendaTech - Panel de Administración</p>
+            <p class="text-muted-footer">&copy; 2025 Allin Runa - Panel de Administración</p>
         </div>
     </footer>
 

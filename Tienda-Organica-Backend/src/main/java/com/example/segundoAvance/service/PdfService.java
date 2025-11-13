@@ -1,124 +1,126 @@
 package com.example.segundoAvance.service;
 
+import com.example.segundoAvance.dto.ItemDTO;
 import com.example.segundoAvance.model.Pedido;
-import com.example.segundoAvance.model.Producto;
-import com.lowagie.text.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
 
 import java.awt.Color;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class PdfService {
 
-    public ByteArrayInputStream generarBoletaPdf(Pedido pedido) throws IOException, DocumentException {
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    public ByteArrayInputStream generarComprobantePdf(Pedido pedido) {
+        Document document = new Document();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
-        PdfWriter.getInstance(document, out);
 
-        document.open();
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
 
-        // --- FUENTES ---
-        Font FONT_TITULO = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20, Color.BLACK);
-        Font FONT_SUBTITULO = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.DARK_GRAY);
-        Font FONT_BODY = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
-        Font FONT_HEADER_TABLA = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
-        
-        // ***** CAMBIO APLICADO AQUÍ: Tamaño de la fuente aumentado de 16 a 24 *****
-        Font FONT_MARCA = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24, new Color(0, 123, 255)); 
+            // --- Título y Logo (Opcional) ---
+            // Font fontTitulo = new Font(Font.HELVETICA, 18, Font.BOLD);
+            // Paragraph titulo = new Paragraph("Allin Runa", fontTitulo);
+            // document.add(titulo);
 
-        // --- ENCABEZADO ---
-        PdfPTable headerTable = new PdfPTable(2);
-        headerTable.setWidthPercentage(100);
-        headerTable.setWidths(new float[] { 1f, 1f });
-        headerTable.getDefaultCell().setBorder(Rectangle.NO_BORDER);
+            // --- Título del Comprobante ---
+            Font fontComprobante = new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY);
+            String tipoComprobante = "factura".equals(pedido.getTipoComprobante()) ? "FACTURA ELECTRÓNICA" : "BOLETA DE VENTA ELECTRÓNICA";
+            Paragraph pTipo = new Paragraph(tipoComprobante, fontComprobante);
+            pTipo.setAlignment(Paragraph.ALIGN_CENTER);
+            document.add(pTipo);
 
-        Paragraph marca = new Paragraph("TiendaTech", FONT_MARCA);
-        PdfPCell marcaCell = new PdfPCell(marca);
-        marcaCell.setBorder(Rectangle.NO_BORDER);
-        marcaCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        headerTable.addCell(marcaCell);
+            Paragraph pId = new Paragraph("Pedido N°: " + pedido.getId(), new Font(Font.HELVETICA, 12, Font.BOLD));
+            pId.setAlignment(Paragraph.ALIGN_CENTER);
+            document.add(pId);
+            
+            document.add(new Paragraph(" ")); // Espacio
 
-        PdfPCell textCell = new PdfPCell();
-        Paragraph tituloBoleta = new Paragraph("Boleta de Venta", FONT_TITULO);
-        tituloBoleta.setAlignment(Element.ALIGN_RIGHT);
-        Paragraph numeroPedido = new Paragraph("Pedido N°: " + pedido.getId(), FONT_SUBTITULO);
-        numeroPedido.setAlignment(Element.ALIGN_RIGHT);
-        
-        textCell.addElement(tituloBoleta);
-        textCell.addElement(numeroPedido);
-        textCell.setBorder(Rectangle.NO_BORDER);
-        textCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        headerTable.addCell(textCell);
+            // --- Datos del Cliente ---
+            document.add(new Paragraph("Datos del Cliente:", new Font(Font.HELVETICA, 12, Font.BOLD)));
 
-        document.add(headerTable);
-        document.add(Chunk.NEWLINE);
+            if ("factura".equals(pedido.getTipoComprobante())) {
+                document.add(new Paragraph("Razón Social: " + pedido.getRazonSocial()));
+                document.add(new Paragraph("RUC: " + pedido.getRuc()));
+            } else {
+                document.add(new Paragraph("Cliente: " + pedido.getNombre() + " " + pedido.getApellidos()));
+                document.add(new Paragraph("DNI: " + pedido.getDni()));
+            }
+            document.add(new Paragraph("Email: " + pedido.getEmail()));
+            document.add(new Paragraph("Fecha de Emisión: " + pedido.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+            document.add(new Paragraph(" "));
 
-        // --- El resto del documento se mantiene igual ---
-        
-        document.add(new Paragraph("Datos del Cliente", FONT_SUBTITULO));
-        document.add(new Paragraph("----------------------------------------------------------------------------------------------------"));
-        document.add(new Paragraph("Nombre: " + pedido.getUsuario().getNombreCompleto(), FONT_BODY));
-        document.add(new Paragraph("Email: " + pedido.getUsuario().getEmail(), FONT_BODY));
-        document.add(new Paragraph("Teléfono: " + pedido.getUsuario().getTelefono(), FONT_BODY));
-        document.add(new Paragraph("Dirección de Envío: " + pedido.getUsuario().getDireccion(), FONT_BODY));
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        document.add(new Paragraph("Fecha de Compra: " + pedido.getFechaCreacion().format(formatter), FONT_BODY));
-        document.add(Chunk.NEWLINE);
+            // --- Dirección de Envío ---
+            document.add(new Paragraph("Datos de Envío:", new Font(Font.HELVETICA, 12, Font.BOLD)));
+            document.add(new Paragraph("Dirección: " + pedido.getDireccion()));
+            document.add(new Paragraph(pedido.getDistrito() + ", " + pedido.getProvincia() + ", " + pedido.getDepartamento()));
+            if(pedido.getReferencia() != null && !pedido.getReferencia().isEmpty()) {
+                document.add(new Paragraph("Referencia: " + pedido.getReferencia()));
+            }
+            document.add(new Paragraph(" "));
 
-        document.add(new Paragraph("Detalle del Pedido", FONT_SUBTITULO));
-        document.add(Chunk.NEWLINE);
-        PdfPTable tablaProductos = new PdfPTable(4);
-        tablaProductos.setWidthPercentage(100);
-        tablaProductos.setWidths(new float[] { 4f, 1.5f, 1f, 1.5f });
-        tablaProductos.addCell(crearCeldaHeader("Producto", FONT_HEADER_TABLA));
-        tablaProductos.addCell(crearCeldaHeader("Precio Unit.", FONT_HEADER_TABLA));
-        tablaProductos.addCell(crearCeldaHeader("Cant.", FONT_HEADER_TABLA));
-        tablaProductos.addCell(crearCeldaHeader("Subtotal", FONT_HEADER_TABLA));
+            // --- Tabla de Productos ---
+            document.add(new Paragraph("Detalle del Pedido:", new Font(Font.HELVETICA, 12, Font.BOLD)));
+            document.add(new Paragraph(" "));
 
-        for (Producto producto : pedido.getProductos()) {
-            int cantidad = 1; 
-            double subtotal = producto.getPrecio() * cantidad;
-            tablaProductos.addCell(crearCeldaBody(producto.getNombre(), FONT_BODY, Element.ALIGN_LEFT));
-            tablaProductos.addCell(crearCeldaBody(String.format("S/ %.2f", producto.getPrecio()), FONT_BODY, Element.ALIGN_CENTER));
-            tablaProductos.addCell(crearCeldaBody(String.valueOf(cantidad), FONT_BODY, Element.ALIGN_CENTER));
-            tablaProductos.addCell(crearCeldaBody(String.format("S/ %.2f", subtotal), FONT_BODY, Element.ALIGN_RIGHT));
+            PdfPTable table = new PdfPTable(4); // 4 columnas
+            table.setWidthPercentage(100);
+            table.setWidths(new float[] {1f, 4f, 2f, 2f});
+
+            // Encabezados de tabla
+            Font headFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+            Color headerBg = new Color(52, 58, 64); // Dark gray
+            
+            PdfPCell hcell;
+            hcell = new PdfPCell(new Paragraph("Cant.", headFont)); hcell.setBackgroundColor(headerBg); hcell.setBorder(Rectangle.NO_BORDER); table.addCell(hcell);
+            hcell = new PdfPCell(new Paragraph("Producto", headFont)); hcell.setBackgroundColor(headerBg); hcell.setBorder(Rectangle.NO_BORDER); table.addCell(hcell);
+            hcell = new PdfPCell(new Paragraph("P. Unit.", headFont)); hcell.setBackgroundColor(headerBg); hcell.setBorder(Rectangle.NO_BORDER); table.addCell(hcell);
+            hcell = new PdfPCell(new Paragraph("Subtotal", headFont)); hcell.setBackgroundColor(headerBg); hcell.setBorder(Rectangle.NO_BORDER); table.addCell(hcell);
+
+            // Decodificar el JSON de 'detalles'
+            List<ItemDTO> items = objectMapper.readValue(pedido.getDetalles(), new TypeReference<List<ItemDTO>>() {});
+
+            // Llenar tabla
+            for (ItemDTO item : items) {
+                // (Necesitaríamos buscar el nombre del producto, pero por ahora usamos el ID)
+                table.addCell(String.valueOf(item.getQuantity()));
+                table.addCell("Producto ID: " + item.getId()); // (Mejora: Buscar el nombre real)
+                table.addCell(String.format("S/ %.2f", item.getPrecio()));
+                table.addCell(String.format("S/ %.2f", item.getPrecio() * item.getQuantity()));
+            }
+            
+            document.add(table);
+            document.add(new Paragraph(" "));
+
+            // --- Totales ---
+            document.add(new Paragraph("Subtotal: S/ " + String.format("%.2f", pedido.getSubtotal()), new Font(Font.HELVETICA, 10)));
+            document.add(new Paragraph("Envío: S/ " + String.format("%.2f", pedido.getCostoEnvio()), new Font(Font.HELVETICA, 10)));
+            document.add(new Paragraph("Total Pagado: S/ " + String.format("%.2f", pedido.getTotal()), new Font(Font.HELVETICA, 14, Font.BOLD)));
+
+            document.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        document.add(tablaProductos);
 
-        Paragraph total = new Paragraph(String.format("TOTAL: S/ %.2f", pedido.getTotal()), FONT_TITULO);
-        total.setAlignment(Element.ALIGN_RIGHT);
-        document.add(Chunk.NEWLINE);
-        document.add(total);
-
-        Paragraph footer = new Paragraph("¡Gracias por tu compra en TiendaTech!", FONT_SUBTITULO);
-        footer.setAlignment(Element.ALIGN_CENTER);
-        footer.setSpacingBefore(30);
-        document.add(footer);
-
-        document.close();
         return new ByteArrayInputStream(out.toByteArray());
-    }
-    
-    private PdfPCell crearCeldaHeader(String contenido, Font fuente) {
-        PdfPCell cell = new PdfPCell(new Paragraph(contenido, fuente));
-        cell.setBackgroundColor(new Color(33, 37, 41));
-        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-        cell.setPadding(5);
-        return cell;
-    }
-    
-    private PdfPCell crearCeldaBody(String contenido, Font fuente, int alineacion) {
-        PdfPCell cell = new PdfPCell(new Paragraph(contenido, fuente));
-        cell.setHorizontalAlignment(alineacion);
-        cell.setPadding(5);
-        return cell;
     }
 }

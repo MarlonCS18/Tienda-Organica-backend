@@ -2,11 +2,13 @@ package com.example.segundoAvance.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
+@NoArgsConstructor
 @Entity
 public class Pedido {
 
@@ -14,26 +16,45 @@ public class Pedido {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime fechaCreacion;
+    @CreationTimestamp
+    private LocalDateTime fecha;
 
-    private double total;
+    @Column(columnDefinition = "TEXT")
+    private String detalles; // JSON de los items
 
-    // --- RELACIÓN "MUCHOS A UNO" CON USUARIO ---
-    // Muchos pedidos pueden pertenecer a un solo usuario.
-    @ManyToOne
-    @JoinColumn(name = "usuario_id") // Esta será la clave foránea en la tabla pedido.
-    private Usuario usuario;
+    private Double subtotal;
+    private Double costoEnvio;
+    private Double total;
 
-    // --- RELACIÓN "MUCHOS A MUCHOS" CON PRODUCTO ---
-    // Un pedido puede tener muchos productos.
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinTable(
-        name = "pedido_productos", // Nombre de la tabla intermedia
-        joinColumns = @JoinColumn(name = "pedido_id"),
-        inverseJoinColumns = @JoinColumn(name = "producto_id")
-    )
-    private List<Producto> productos = new ArrayList<>();
+    // --- DATOS DEL CLIENTE ---
+    private String email;
+    private String nombre;
+    private String apellidos;
+    private String tipoComprobante; // "boleta" o "factura"
+    private String dni;
+    private String ruc;
+    private String razonSocial;
+    private String telefono;
     
-    // Podríamos añadir más detalles como la cantidad de cada producto
-    // pero para empezar, esta es la relación básica.
+    // --- DATOS DE ENVÍO ---
+    private String direccion;
+    private String referencia;
+    private String distrito;
+    private String provincia;
+    private String departamento;
+
+    // --- DATOS DE PAGO ---
+    private String metodoEnvio;
+    private String metodoPago;
+    private String estado = "PENDIENTE";
+
+    // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "usuario_id", // La columna en la tabla 'pedido'
+        // Le decimos explícitamente que la clave foránea apunta
+        // a la tabla 'usuarios' (plural)
+        foreignKey = @ForeignKey(name = "FK_pedido_usuarios") 
+    )
+    private Usuario usuario;
 }

@@ -5,13 +5,11 @@ package com.example.segundoAvance.controller;
 import com.example.segundoAvance.model.Producto;
 import com.example.segundoAvance.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
+import java.util.Optional;
 /*
  * 1. @RestController: ¡Esto es lo más importante!
  * - Tu AdminController usa @Controller (para devolver HTML/Thymeleaf).
@@ -63,6 +61,19 @@ public class ApiProductoController {
         // Necesitaremos crear este método en el repositorio (Paso 3)
         // Por ahora, usemos uno que ordene por ID (los más nuevos)
         return productoRepository.findTop4ByOrderByIdDesc();
+    }
+    @GetMapping("/productos/{id}")
+    public ResponseEntity<Producto> obtenerProductoPorId(@PathVariable Long id) {
+        // Usamos Optional para manejar el caso de que no se encuentre
+        Optional<Producto> producto = productoRepository.findById(id);
+        
+        if (producto.isPresent()) {
+            // Si se encuentra, devuelve 200 OK con el producto
+            return ResponseEntity.ok(producto.get());
+        } else {
+            // Si no se encuentra, devuelve 404 Not Found
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // (Aquí puedes añadir más endpoints, como /api/v1/producto/{id} para un solo producto)
