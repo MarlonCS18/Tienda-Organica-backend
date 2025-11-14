@@ -11,4 +11,5 @@ import java.util.List;
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     // Spring Data JPA se encargará de todo.
     List<Pedido> findByUsuarioOrderByIdDesc(Usuario usuario);
+    List<Pedido> findByUsuarioOrderByFechaDesc(Usuario usuario);
 }

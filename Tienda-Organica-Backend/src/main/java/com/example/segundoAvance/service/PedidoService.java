@@ -1,18 +1,21 @@
 package com.example.segundoAvance.service;
 
+import com.example.segundoAvance.dto.ClienteInfoDTO;
 import com.example.segundoAvance.dto.ItemDTO;
 import com.example.segundoAvance.dto.PedidoRequestDTO;
+import com.example.segundoAvance.model.DetallePedido;
 import com.example.segundoAvance.model.Pedido;
 import com.example.segundoAvance.model.Producto;
-import com.example.segundoAvance.model.Usuario; // <-- ¡IMPORTANTE!
+import com.example.segundoAvance.model.Usuario;
 import com.example.segundoAvance.repository.PedidoRepository;
 import com.example.segundoAvance.repository.ProductoRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.segundoAvance.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.List; // <-- 1. IMPORTA ESTO
 
 @Service
 public class PedidoService {
@@ -24,69 +27,75 @@ public class PedidoService {
     private ProductoRepository productoRepository;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private UsuarioRepository usuarioRepository;
 
-    // --- ¡MÉTODO MODIFICADO! ---
-    // Ahora aceptamos el objeto 'Usuario' del usuario logueado.
+    // (Tu método crearPedido se queda igual)
     @Transactional
-    public Pedido crearPedido(PedidoRequestDTO request, Usuario usuario) { // <-- CAMBIO AQUÍ
-        
-        // 1. Validar y Descontar Stock (Sin cambios)
-        validarYDescontarStock(request.getItems());
-
-        // 2. Crear el objeto Pedido (Sin cambios)
+    public Pedido crearPedido(PedidoRequestDTO pedidoRequest, Usuario usuario) { 
+        ClienteInfoDTO clienteInfo = pedidoRequest.getClienteInfo();
         Pedido pedido = new Pedido();
 
-        // --- ¡NUEVO PASO! Vincular el pedido al usuario ---
+        pedido.setNombre(clienteInfo.getNombre());
+        pedido.setApellidos(clienteInfo.getApellidos());
+        pedido.setEmail(clienteInfo.getEmail());
+        pedido.setTelefono(clienteInfo.getTelefono());
+        pedido.setDireccion(clienteInfo.getDireccion());
+        pedido.setReferencia(clienteInfo.getReferencia());
+        pedido.setDepartamento(clienteInfo.getDepartamento());
+        pedido.setProvincia(clienteInfo.getProvincia());
+        pedido.setDistrito(clienteInfo.getDistrito());
+        pedido.setTipoComprobante(clienteInfo.getTipoComprobante());
+        pedido.setDni(clienteInfo.getDni());
+        pedido.setRuc(clienteInfo.getRuc());
+        pedido.setRazonSocial(clienteInfo.getRazonSocial());
+        pedido.setMetodoEnvio(pedidoRequest.getMetodoEnvio());
+        pedido.setMetodoPago(pedidoRequest.getMetodoPago());
+        pedido.setCostoEnvio(pedidoRequest.getCostoEnvio());
+        pedido.setSubtotal(pedidoRequest.getSubtotal());
+        pedido.setTotal(pedidoRequest.getTotal());
+        pedido.setEstado("PENDIENTE");
+        pedido.setFecha(LocalDateTime.now());
         pedido.setUsuario(usuario);
 
-        // 3. Copiar datos del cliente (Sin cambios)
-        pedido.setEmail(request.getClienteInfo().getEmail());
-        pedido.setNombre(request.getClienteInfo().getNombre());
-        pedido.setApellidos(request.getClienteInfo().getApellidos());
-        pedido.setTipoComprobante(request.getClienteInfo().getTipoComprobante());
-        pedido.setDni(request.getClienteInfo().getDni());
-        pedido.setRuc(request.getClienteInfo().getRuc());
-        pedido.setRazonSocial(request.getClienteInfo().getRazonSocial());
-        pedido.setTelefono(request.getClienteInfo().getTelefono());
-        pedido.setDireccion(request.getClienteInfo().getDireccion());
-        pedido.setReferencia(request.getClienteInfo().getReferencia());
-        pedido.setDistrito(request.getClienteInfo().getDistrito());
-        pedido.setProvincia(request.getClienteInfo().getProvincia());
-        pedido.setDepartamento(request.getClienteInfo().getDepartamento());
+        for (ItemDTO itemDTO : pedidoRequest.getItems()) {
+            Producto producto = productoRepository.findById(itemDTO.getId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + itemDTO.getId()));
 
-        // 4. Copiar datos del pedido (Sin cambios)
-        pedido.setMetodoEnvio(request.getMetodoEnvio());
-        pedido.setMetodoPago(request.getMetodoPago());
-        pedido.setCostoEnvio(request.getCostoEnvio());
-        pedido.setSubtotal(request.getSubtotal());
-        pedido.setTotal(request.getTotal());
-        pedido.setEstado("PENDIENTE");
-
-        // 5. Convertir items a JSON (Sin cambios)
-        try {
-            String detallesJson = objectMapper.writeValueAsString(request.getItems());
-            pedido.setDetalles(detallesJson);
-        } catch (Exception e) {
-            throw new RuntimeException("Error al serializar detalles del pedido", e);
+            DetallePedido detalle = new DetallePedido();
+            detalle.setProducto(producto);
+            detalle.setCantidad(itemDTO.getQuantity());
+            detalle.setPrecioUnitario(itemDTO.getPrecio()); 
+            
+            pedido.addDetalle(detalle); 
         }
-        
-        // 6. Guardar el pedido en la BD (Sin cambios)
+
         return pedidoRepository.save(pedido);
     }
 
-    // Método validarYDescontarStock (Sin cambios)
-    private void validarYDescontarStock(List<ItemDTO> items) {
-        for (ItemDTO item : items) {
-            Producto producto = productoRepository.findById(item.getId())
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + item.getId()));
-            
-            if (producto.getStock() < item.getQuantity()) {
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
-            }
-            
-            producto.setStock(producto.getStock() - item.getQuantity());
-            productoRepository.save(producto);
+    // --- ¡AQUÍ ESTÁ EL ARREGLO! ---
+    // 2. AÑADE ESTE NUEVO MÉTODO
+    public List<Pedido> obtenerMisPedidos(String username) {
+        // 1. Busca al usuario por su email
+        Usuario usuario = usuarioRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + username));
+        
+        // 2. Llama al nuevo método del repositorio que acabamos de crear
+        return pedidoRepository.findByUsuarioOrderByIdDesc(usuario);
+    }
+    
+    // 3. AÑADE TAMBIÉN ESTE MÉTODO (para tu endpoint de factura)
+    public Pedido obtenerPedidoPorIdYUsuario(Long id, String username) {
+        Usuario usuario = usuarioRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Pedido no encontrado: " + id));
+        
+        // Verificación de seguridad
+        if (!pedido.getUsuario().getId().equals(usuario.getId())) {
+            throw new RuntimeException("Acceso no autorizado a este pedido");
         }
+        
+        return pedido;
     }
 }

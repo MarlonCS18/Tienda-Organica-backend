@@ -3,25 +3,23 @@ package com.example.segundoAvance.controller;
 import com.example.segundoAvance.dto.PedidoRequestDTO;
 import com.example.segundoAvance.model.Pedido;
 import com.example.segundoAvance.model.Usuario;
-import com.example.segundoAvance.repository.PedidoRepository; // ¡Importar!
-import com.example.segundoAvance.repository.UsuarioRepository; // ¡Importar!
+// import com.example.segundoAvance.repository.PedidoRepository; // <-- 1. ELIMINA ESTO
+import com.example.segundoAvance.repository.UsuarioRepository;
 import com.example.segundoAvance.service.PedidoService;
-import com.example.segundoAvance.service.PdfService; // ¡Importar!
+import com.example.segundoAvance.service.PdfService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource; // ¡Importar!
-import org.springframework.http.HttpHeaders; // ¡Importar!
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType; // ¡Importar!
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication; // ¡Importar!
-import org.springframework.security.core.userdetails.UserDetails; // ¡Importar!
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayInputStream; // ¡Importar!
-import java.security.Principal; // ¡Importar!
-import java.util.List; // ¡Importar!
+import java.io.ByteArrayInputStream;
+import java.security.Principal;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional; // ¡Importar!
+// import java.util.Optional; // <-- 2. ELIMINA ESTO
 
 @RestController
 @RequestMapping("/api/v1/pedidos")
@@ -32,31 +30,29 @@ public class ApiPedidoController {
     private PedidoService pedidoService;
 
     @Autowired
-    private UsuarioRepository usuarioRepository; // ¡Necesario!
+    private UsuarioRepository usuarioRepository; // (Solo para el /crear)
+
+    // @Autowired
+    // private PedidoRepository pedidoRepository; // <-- 3. ELIMINA ESTO
 
     @Autowired
-    private PedidoRepository pedidoRepository; // ¡Necesario!
+    private PdfService pdfService;
 
-    @Autowired
-    private PdfService pdfService; // ¡Necesario!
-
-    /**
-     * Endpoint para crear un nuevo pedido.
-     * Ahora requiere que el usuario esté autenticado.
-     */
+    
     @PostMapping("/crear")
     public ResponseEntity<?> crearPedido(@RequestBody PedidoRequestDTO pedidoRequest, 
-                                         Principal principal) { // <-- ¡Inyectamos Principal!
+                                         Principal principal) { 
         
-        // 1. Obtener el usuario logueado
+        if (principal == null) {
+             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Usuario no autenticado"));
+        }
+        
+        // (Esta parte está bien como la tenías)
         Usuario usuario = usuarioRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         
         try {
-            // 2. Llama al servicio (¡Ahora pasamos el objeto Usuario!)
-            Pedido nuevoPedido = pedidoService.crearPedido(pedidoRequest, usuario);
-            
-            // 3. Devolver éxito
+            Pedido nuevoPedido = pedidoService.crearPedido(pedidoRequest, usuario); 
             return ResponseEntity.ok(Map.of("pedidoId", nuevoPedido.getId()));
 
         } catch (RuntimeException e) {
@@ -72,50 +68,52 @@ public class ApiPedidoController {
     }
 
     /**
-     * --- ¡NUEVO ENDPOINT! ---
-     * Devuelve la lista de pedidos solo para el usuario logueado.
+     * --- ¡AQUÍ ESTÁ EL ARREGLO! ---
+     * Ahora llama a 'pedidoService' en lugar de 'pedidoRepository'
      */
     @GetMapping("/mis-pedidos")
-    public ResponseEntity<List<Pedido>> obtenerMisPedidos(Principal principal) {
+    public ResponseEntity<?> obtenerMisPedidos(Principal principal) {
         
-        // 1. Obtener el usuario logueado
-        Usuario usuario = usuarioRepository.findByEmail(principal.getName())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Usuario no autenticado"));
+        }
+
+        try {
+            String username = principal.getName();
+            
+            // 4. Llama al nuevo método del servicio
+            List<Pedido> pedidos = pedidoService.obtenerMisPedidos(username); 
+            
+            return ResponseEntity.ok(pedidos);
         
-        // 2. Usar el nuevo método del repositorio
-        List<Pedido> pedidos = pedidoRepository.findByUsuarioOrderByIdDesc(usuario);
-        
-        return ResponseEntity.ok(pedidos);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /**
-     * --- ¡NUEVO ENDPOINT! ---
-     * Genera y devuelve el comprobante (Boleta/Factura) en PDF.
+     * --- ¡ARREGLO DE BUENAS PRÁCTICAS! ---
+     * Ahora llama a 'pedidoService' para validar
      */
     @GetMapping("/{id}/factura")
-    public ResponseEntity<InputStreamResource> descargarFactura(@PathVariable Long id, Principal principal) {
+    public ResponseEntity<?> descargarFactura(@PathVariable Long id, Principal principal) {
         
-        // 1. Obtener el pedido
-        Optional<Pedido> pedidoOpt = pedidoRepository.findById(id);
-        if (pedidoOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        Pedido pedido = pedidoOpt.get();
-
-        // 2. ¡VERIFICACIÓN DE SEGURIDAD!
-        // Asegurarnos de que el pedido pertenece al usuario que lo está pidiendo.
-        if (!pedido.getUsuario().getEmail().equals(principal.getName())) {
-            // Si no es su pedido, no tiene autorización
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // 3. Generar el PDF
         try {
+            String username = principal.getName();
+            
+            // 5. Llama al servicio (que ya incluye la validación de seguridad)
+            Pedido pedido = pedidoService.obtenerPedidoPorIdYUsuario(id, username); 
+
+            // 6. Genera el PDF
             ByteArrayInputStream pdf = pdfService.generarComprobantePdf(pedido);
             
             HttpHeaders headers = new HttpHeaders();
             String filename = (pedido.getTipoComprobante().equals("factura") ? "Factura-" : "Boleta-") + pedido.getId() + ".pdf";
-            headers.add("Content-Disposition", "inline; filename=" + filename); // 'inline' abre en el navegador
+            headers.add("Content-Disposition", "inline; filename=" + filename);
 
             return ResponseEntity
                     .ok()
@@ -123,6 +121,9 @@ public class ApiPedidoController {
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(new InputStreamResource(pdf));
                     
+        } catch (RuntimeException e) {
+            // Si el servicio lanza error (no encontrado o no autorizado)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

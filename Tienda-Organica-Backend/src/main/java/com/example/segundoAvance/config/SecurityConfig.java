@@ -4,13 +4,11 @@ import com.example.segundoAvance.config.handler.CustomAuthenticationSuccessHandl
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod; 
-import org.springframework.http.HttpStatus; 
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler; 
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -20,7 +18,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     @Autowired
-    private CustomAuthenticationSuccessHandler successHandler; // ¡Volvemos a usar tu handler!
+    private CustomAuthenticationSuccessHandler successHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -29,6 +27,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        // Tu configuración CORS está perfecta
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -48,49 +47,55 @@ public class SecurityConfig {
             
             .authorizeHttpRequests(authorize -> authorize
                 
-                // --- RUTAS PÚBLICAS (Sin cambios) ---
+                // 1. Permite todas las solicitudes OPTIONS (para CORS)
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
+                
+                // 2. Permite todas las rutas públicas (GET y generales)
                 .requestMatchers(
-                    "/css/**", 
-                    "/img/**", 
-                    "/api/v1/productos/**"
+                    "/", "/login", "/registro",         // Páginas Thymeleaf
+                    "/css/**", "/img/**",                // Recursos estáticos
+                    "/api/v1/productos/**",             // API pública de productos
+                    "/api/v1/auth/me"                   // API pública de sesión
                 ).permitAll()
-                .requestMatchers(
-                    "/login", 
-                    "/api/v1/auth/register",
-                    "/api/v1/auth/me"
+                
+                // 3. Permite todas las rutas POST públicas (separadas)
+                .requestMatchers(HttpMethod.POST,
+                    "/login",                   // El form login de Spring
+                    "/api/v1/auth/register",    // Registro de tu frontend
+                    "/api/v1/auth/logout"       // Logout de tu frontend
                 ).permitAll()
-                .requestMatchers(HttpMethod.POST, "/login").permitAll() 
 
-                // --- RUTAS DE ADMIN (Sin cambios) ---
+                // 4. Protege el admin
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 
-                // --- RUTAS PROTEGIDAS (Sin cambios) ---
-                .requestMatchers(
-                    "/api/v1/pedidos/crear"
-                ).hasAnyRole("USER", "ADMIN")
+                // 5. Protege rutas de usuario específicas
+                .requestMatchers("/api/v1/pedidos/**").hasAnyRole("USER", "ADMIN")
 
+                // 6. Protege todo lo demás
                 .anyRequest().authenticated()
             )
             
-            // --- ¡CONFIGURACIÓN DE LOGIN CORREGIDA! ---
             .formLogin(form -> form
-                .loginPage("/login")
-                // 1. Usamos tu CustomSuccessHandler. Este SÍ SABE redirigir
-                // al admin a /admin/dashboard y al usuario a /
+                .loginPage("/login") 
                 .successHandler(successHandler) 
-                // 2. Quitamos el .failureHandler() personalizado.
-                // Ahora Spring usará el por defecto, que redirige a /login?error
-                // Esto arregla tu error 401 en la página de admin.
-                .permitAll() 
+                .failureHandler((request, response, exception) -> {
+                    response.sendRedirect("/login?error=true");
+                })
             )
             
-            // --- LOGOUT (Sin cambios) ---
+            // --- ¡AQUÍ ESTÁ EL ARREGLO! ---
             .logout(logout -> logout
-                .logoutUrl("/api/v1/auth/logout") 
-                .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.OK)) 
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            );
+                .logoutUrl("/api/v1/auth/logout") // Escucha en la URL del frontend
+                .logoutSuccessUrl("/")
+                .invalidateHttpSession(true)
+                // 1. Ahora le decimos que BORRE AMBAS cookies al cerrar sesión
+                .deleteCookies("JSESSIONID", "remember-me") 
+            )
+            
+            // 2. Le decimos a Spring que NUNCA MÁS vuelva a crear
+            //    la cookie "remember-me"
+            .rememberMe(rm -> rm.disable());
+            // --- FIN DEL ARREGLO ---
 
         return http.build();
     }

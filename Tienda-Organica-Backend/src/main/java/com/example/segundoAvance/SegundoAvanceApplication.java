@@ -31,11 +31,13 @@ public class SegundoAvanceApplication implements CommandLineRunner {
             admin.setEmail("admin@tienda.com");
             admin.setPassword(passwordEncoder.encode("admin123"));
             
-            // --- ¡LA CORRECCIÓN! ---
-            // Cambiamos 'setNombreCompleto' por 'setNombre'
-            admin.setNombre("Administrador"); // <-- LÍNEA CORREGIDA
+            // (Esta línea ya estaba bien en tu archivo)
+            admin.setNombre("Administrador");
             
-            admin.setRol("ROLE_ADMIN");
+            // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+            // Cambiamos 'setRol' por 'setRoles' (plural)
+            admin.setRoles("ROLE_ADMIN"); // <-- LÍNEA CORREGIDA
+            
             usuarioRepository.save(admin);
             System.out.println(">>> Usuario Administrador (admin@tienda.com) creado por defecto <<<");
         }

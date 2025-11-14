@@ -1,26 +1,20 @@
 package com.example.segundoAvance.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
-@NoArgsConstructor
 @Entity
-@Table(name = "usuarios") // El nombre de tu tabla
+@Table(name = "usuario")
 public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // --- ¡CAMPO AÑADIDO! ---
-    // (Añadimos nullable = false para que sea obligatorio)
     @Column(nullable = false)
     private String nombre;
 
@@ -30,5 +24,17 @@ public class Usuario {
     @Column(nullable = false)
     private String password;
 
-    private String rol;
+    private String roles; // El campo se llama 'roles' (plural)
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Pedido> pedidos;
+
+
+    // --- ¡AQUÍ ESTÁ EL ARREGLO! ---
+    // Añadimos el "setter" manualmente para que Java lo encuentre
+    // y el error en AdminController desaparezca.
+    public void setRoles(String roles) {
+        this.roles = roles;
+    }
 }

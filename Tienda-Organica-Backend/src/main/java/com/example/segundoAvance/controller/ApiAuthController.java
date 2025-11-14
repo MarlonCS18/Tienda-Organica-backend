@@ -20,7 +20,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // ¡Permitir credenciales (cookies)!
+// --- ¡AQUÍ ESTÁ EL ARREGLO! ---
+// Se eliminó la anotación @CrossOrigin. Dejaremos que SecurityConfig lo maneje.
+// @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") 
 public class ApiAuthController {
 
     @Autowired
@@ -44,7 +46,9 @@ public class ApiAuthController {
         nuevoUsuario.setNombre(registroDTO.getNombre());
         nuevoUsuario.setEmail(registroDTO.getEmail());
         nuevoUsuario.setPassword(passwordEncoder.encode(registroDTO.getPassword()));
-        nuevoUsuario.setRol("ROLE_USER"); // Rol por defecto para clientes
+        
+        // (Esto ya debería estar corregido de la vez anterior)
+        nuevoUsuario.setRoles("ROLE_USER"); // Rol por defecto para clientes
 
         usuarioRepository.save(nuevoUsuario);
 
@@ -53,7 +57,6 @@ public class ApiAuthController {
 
     /**
      * Endpoint para que React verifique si hay una sesión activa.
-     * Esto lee la cookie de sesión de Spring Security.
      */
     @GetMapping("/me")
     public ResponseEntity<UsuarioDTO> obtenerEstadoAutenticacion(Principal principal) {
@@ -71,10 +74,11 @@ public class ApiAuthController {
 
         // Devolver un DTO seguro (sin la contraseña)
         UsuarioDTO usuarioDTO = new UsuarioDTO(
-            usuario.getId(),
-            usuario.getNombre(),
-            usuario.getEmail(),
-            usuario.getRol()
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getEmail(),
+                // (Esto ya debería estar corregido de la vez anterior)
+                usuario.getRoles()
         );
         return ResponseEntity.ok(usuarioDTO);
     }
