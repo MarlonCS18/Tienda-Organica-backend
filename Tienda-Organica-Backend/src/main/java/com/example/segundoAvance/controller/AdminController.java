@@ -6,7 +6,9 @@ import com.example.segundoAvance.model.Usuario;
 import com.example.segundoAvance.repository.PedidoRepository;
 import com.example.segundoAvance.repository.ProductoRepository;
 import com.example.segundoAvance.repository.UsuarioRepository;
-// import com.example.segundoAvance.service.PedidoService; // <-- ELIMINADO
+
+// --- 1. ASEGÚRATE DE USAR ESTA IMPORTACIÓN (DE ORG.SPRINGFRAMEWORK) ---
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,9 +41,6 @@ public class AdminController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // @Autowired
-    // private PedidoService pedidoService; // <-- ¡ELIMINADO! Este era el warning.
-
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         model.addAttribute("totalProductos", productoRepository.count());
@@ -50,7 +49,7 @@ public class AdminController {
         return "admin/dashboard";
     }
 
-    // ... (El resto de tus métodos de productos se quedan igual)
+    // ... (Métodos de Productos) ...
     @GetMapping("/productos/add")
     public String addProducto(Model model) {
         model.addAttribute("producto", new Producto());
@@ -115,7 +114,7 @@ public class AdminController {
         return "redirect:/admin/productos/editar";
     }
 
-    // ... (El resto de tus métodos de usuarios se quedan igual)
+    // ... (Métodos de Usuarios) ...
     @GetMapping("/usuarios")
     public String gestionarUsuarios(Model model) {
         model.addAttribute("usuarios", usuarioRepository.findAll());
@@ -131,15 +130,12 @@ public class AdminController {
     @PostMapping("/usuarios/crear")
     public String crearUsuario(@ModelAttribute("usuario") Usuario usuario) {
         usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-        
-        // ¡Esta línea ahora funcionará gracias al cambio en Usuario.java!
         usuario.setRoles("ROLE_USER");
-        
         usuarioRepository.save(usuario);
         return "redirect:/admin/usuarios";
     }
 
-    // ... (El resto de tus métodos de pedidos se quedan igual)
+    // ... (Métodos de Pedidos) ...
     @GetMapping("/pedidos")
     public String verPedidos(Model model) {
         model.addAttribute("pedidos", pedidoRepository.findAll());
@@ -156,5 +152,35 @@ public class AdminController {
             model.addAttribute("items", pedido.getDetalles()); 
         }
         return "admin/ver-detalle-pedido";
+    }
+
+    // --- 2. MÉTODO DE BORRADO MODIFICADO ---
+    @Transactional
+    @GetMapping("/pedidos/delete/{id}")
+    public String deletePedido(@PathVariable Long id) {
+        
+        // Usamos Optional para asegurarnos de que el pedido exista
+        Optional<Pedido> pedidoOpt = pedidoRepository.findById(id);
+        
+        if (pedidoOpt.isPresent()) {
+            Pedido pedido = pedidoOpt.get();
+            
+            // La anotación @Transactional se asegura de que podamos cargar el usuario 'LAZY'
+            Usuario usuario = pedido.getUsuario(); 
+            
+            if (usuario != null) {
+                // Maniobra clave: rompemos la relación desde el lado del Usuario
+                // Le decimos a la lista del Usuario que "suelte" este pedido
+                usuario.getPedidos().remove(pedido);
+                // No es necesario guardar (save) el usuario, @Transactional lo maneja
+            }
+            
+            // Ahora que la relación bidireccional está rota,
+            // podemos borrar el pedido de forma segura.
+            pedidoRepository.delete(pedido);
+        }
+        
+        // Redirigimos de vuelta a la lista
+        return "redirect:/admin/pedidos";
     }
 }

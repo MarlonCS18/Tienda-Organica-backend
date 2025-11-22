@@ -44,7 +44,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="fw-bold mb-0">Listado de Usuarios</h1>
             <div>
-                <a href="/admin/usuarios/nuevo" class="btn btn-success">
+                <!-- CORRECCIÓN 1: El enlace apuntaba a /nuevo, pero tu controlador usa /crear -->
+                <a href="/admin/usuarios/crear" class="btn btn-success">
                     <i class="fas fa-user-plus me-1"></i> Crear Nuevo Usuario
                 </a>
                 <a href="/admin/dashboard" class="btn btn-secondary">
@@ -71,11 +72,14 @@
                                 <td th:text="${usuario.email}"></td>
                                 <td>
                                     <span class="badge"
-                                        th:classappend="${usuario.rol == 'ROLE_ADMIN' ? 'bg-success' : 'bg-secondary'}">
-                                        <i th:classappend="${usuario.rol == 'ROLE_ADMIN' ? 'fas fa-user-shield' : 'fas fa-user'}"
+                                       
+                                        th:classappend="${usuario.roles == 'ROLE_ADMIN' ? 'bg-success' : 'bg-secondary'}">
+                                        <!-- CORRECCIÓN 3: Se cambió 'usuario.rol' por 'usuario.roles' -->
+                                        <i th:classappend="${usuario.roles == 'ROLE_ADMIN' ? 'fas fa-user-shield' : 'fas fa-user'}"
                                             class="me-1"></i>
                                         <span
-                                            th:text="${usuario.rol == 'ROLE_ADMIN' ? 'Administrador' : 'Usuario'}"></span>
+                                          
+                                            th:text="${usuario.roles == 'ROLE_ADMIN' ? 'Administrador' : 'Usuario'}"></span>
                                     </span>
                                 </td>
                                 <td class="text-end">
@@ -84,9 +88,11 @@
                                         class="d-inline-flex">
                                         <input type="hidden" name="id" th:value="${usuario.id}" />
                                         <select class="form-select form-select-sm" name="rol" style="width: auto;">
-                                            <option value="ROLE_USER" th:selected="${usuario.rol == 'ROLE_USER'}">
+                                            <!-- CORRECCIÓN 5: Se cambió 'usuario.rol' por 'usuario.roles' -->
+                                            <option value="ROLE_USER" th:selected="${usuario.roles == 'ROLE_USER'}">
                                                 Asignar como Usuario</option>
-                                            <option value="ROLE_ADMIN" th:selected="${usuario.rol == 'ROLE_ADMIN'}">
+                                            <!-- CORRECCIÓN 6: Se cambió 'usuario.rol' por 'usuario.roles' -->
+                                            <option value="ROLE_ADMIN" th:selected="${usuario.roles == 'ROLE_ADMIN'}">
                                                 Asignar como Admin</option>
                                         </select>
                                         <button type="submit" class="btn btn-primary btn-sm ms-2">Guardar</button>
