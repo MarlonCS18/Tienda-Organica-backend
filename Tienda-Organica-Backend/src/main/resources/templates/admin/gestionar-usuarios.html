@@ -25,7 +25,7 @@
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
                     <li class="nav-item ms-3">
-                        <form th:action="@{/logout}" method="post"><button type="submit"
+                        <form th:action="@{/api/v1/auth/logout}" method="post"><button type="submit"
                                 class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
                     </li>
                 </ul>
@@ -44,7 +44,6 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="fw-bold mb-0">Listado de Usuarios</h1>
             <div>
-                <!-- CORRECCIÓN 1: El enlace apuntaba a /nuevo, pero tu controlador usa /crear -->
                 <a href="/admin/usuarios/crear" class="btn btn-success">
                     <i class="fas fa-user-plus me-1"></i> Crear Nuevo Usuario
                 </a>
@@ -72,33 +71,41 @@
                                 <td th:text="${usuario.email}"></td>
                                 <td>
                                     <span class="badge"
-                                       
                                         th:classappend="${usuario.roles == 'ROLE_ADMIN' ? 'bg-success' : 'bg-secondary'}">
-                                        <!-- CORRECCIÓN 3: Se cambió 'usuario.rol' por 'usuario.roles' -->
                                         <i th:classappend="${usuario.roles == 'ROLE_ADMIN' ? 'fas fa-user-shield' : 'fas fa-user'}"
                                             class="me-1"></i>
-                                        <span
-                                          
-                                            th:text="${usuario.roles == 'ROLE_ADMIN' ? 'Administrador' : 'Usuario'}"></span>
+                                        <span th:text="${usuario.roles == 'ROLE_ADMIN' ? 'Administrador' : 'Usuario'}"></span>
                                     </span>
                                 </td>
                                 <td class="text-end">
-                                    <form th:if="${#authentication.name != usuario.email}"
-                                        th:action="@{'/admin/usuarios/cambiar-rol'}" method="post"
-                                        class="d-inline-flex">
-                                        <input type="hidden" name="id" th:value="${usuario.id}" />
-                                        <select class="form-select form-select-sm" name="rol" style="width: auto;">
-                                            <!-- CORRECCIÓN 5: Se cambió 'usuario.rol' por 'usuario.roles' -->
-                                            <option value="ROLE_USER" th:selected="${usuario.roles == 'ROLE_USER'}">
-                                                Asignar como Usuario</option>
-                                            <!-- CORRECCIÓN 6: Se cambió 'usuario.rol' por 'usuario.roles' -->
-                                            <option value="ROLE_ADMIN" th:selected="${usuario.roles == 'ROLE_ADMIN'}">
-                                                Asignar como Admin</option>
-                                        </select>
-                                        <button type="submit" class="btn btn-primary btn-sm ms-2">Guardar</button>
-                                    </form>
+                                    <!-- Bloque para usuarios que NO son el usuario actual -->
+                                    <div th:if="${#authentication.name != usuario.email}" class="d-flex justify-content-end gap-2">
+                                        
+                                        <!-- Formulario Cambiar Rol -->
+                                        <form th:action="@{'/admin/usuarios/cambiar-rol'}" method="post" class="d-inline-flex align-items-center">
+                                            <input type="hidden" name="id" th:value="${usuario.id}" />
+                                            <select class="form-select form-select-sm me-2" name="rol" style="width: auto;">
+                                                <option value="ROLE_USER" th:selected="${usuario.roles == 'ROLE_USER'}">Usuario</option>
+                                                <option value="ROLE_ADMIN" th:selected="${usuario.roles == 'ROLE_ADMIN'}">Admin</option>
+                                            </select>
+                                            <button type="submit" class="btn btn-primary btn-sm" title="Guardar Rol">
+                                                <i class="fas fa-save"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- Formulario Eliminar Usuario -->
+                                        <form th:action="@{/admin/usuarios/eliminar}" method="post" 
+                                              onsubmit="return confirm('¿Estás seguro de eliminar a este usuario? Esta acción borrará su historial de pedidos.');">
+                                            <input type="hidden" name="id" th:value="${usuario.id}" />
+                                            <button type="submit" class="btn btn-danger btn-sm" title="Eliminar Usuario">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Bloque para el usuario actual -->
                                     <div th:if="${#authentication.name == usuario.email}">
-                                        <span class="text-muted small">Rol no modificable</span>
+                                        <span class="text-muted small fst-italic">Tu usuario actual</span>
                                     </div>
                                 </td>
                             </tr>
@@ -116,5 +123,4 @@
     </footer>
 
 </body>
-
 </html>

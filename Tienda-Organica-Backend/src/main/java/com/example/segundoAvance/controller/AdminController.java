@@ -7,22 +7,15 @@ import com.example.segundoAvance.repository.PedidoRepository;
 import com.example.segundoAvance.repository.ProductoRepository;
 import com.example.segundoAvance.repository.UsuarioRepository;
 
-// --- 1. ASEGÚRATE DE USAR ESTA IMPORTACIÓN (DE ORG.SPRINGFRAMEWORK) ---
 import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.security.Principal;
 import java.util.Optional;
 
 @Controller
@@ -46,25 +39,24 @@ public class AdminController {
         model.addAttribute("totalProductos", productoRepository.count());
         model.addAttribute("totalUsuarios", usuarioRepository.count());
         model.addAttribute("totalPedidos", pedidoRepository.count());
+        // Agregamos los últimos pedidos para el dashboard
+        model.addAttribute("pedidosRecientes", pedidoRepository.findTop5ByOrderByFechaDesc());
         return "admin/dashboard";
     }
 
-    // ... (Métodos de Productos) ...
+    // ==========================================
+    // GESTIÓN DE PRODUCTOS
+    // ==========================================
+
     @GetMapping("/productos/add")
     public String addProducto(Model model) {
         model.addAttribute("producto", new Producto());
         return "admin/add-producto";
     }
 
-    public static String UPLOAD_DIRECTORY = System.getProperty("user.dir") + "/src/main/resources/static/img";
+    // Método corregido (Solo URL, sin MultipartFile)
     @PostMapping("/productos/add")
-    public String postAddProducto(@ModelAttribute("producto") Producto producto,
-                                  @RequestParam("imagenFile") MultipartFile imagenFile) throws IOException {
-        if (!imagenFile.isEmpty()) {
-            Path fileNameAndPath = Paths.get(UPLOAD_DIRECTORY, imagenFile.getOriginalFilename());
-            Files.write(fileNameAndPath, imagenFile.getBytes());
-            producto.setImagen("/img/" + imagenFile.getOriginalFilename());
-        }
+    public String postAddProducto(@ModelAttribute("producto") Producto producto) {
         productoRepository.save(producto);
         return "redirect:/admin/productos/editar";
     }
@@ -75,7 +67,7 @@ public class AdminController {
         return "admin/editar-productos";
     }
 
-    @GetMapping("/productos/delete/{id}")
+     @PostMapping("/productos/delete/{id}")
     public String deleteProducto(@PathVariable Long id) {
         productoRepository.deleteById(id);
         return "redirect:/admin/productos/editar";
@@ -92,29 +84,27 @@ public class AdminController {
         }
     }
 
+    // Método corregido (Solo URL, sin MultipartFile)
     @PostMapping("/productos/edit/{id}")
-    public String postEditProducto(@PathVariable Long id,
-                                   @ModelAttribute("producto") Producto producto,
-                                   @RequestParam("imagenFile") MultipartFile imagenFile) throws IOException {
-        Producto productoExistente = productoRepository.findById(id).orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+    public String postEditProducto(@PathVariable Long id, @ModelAttribute("producto") Producto producto) {
+        Producto productoExistente = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
         
         productoExistente.setNombre(producto.getNombre());
         productoExistente.setCategoria(producto.getCategoria());
         productoExistente.setPrecio(producto.getPrecio());
         productoExistente.setStock(producto.getStock());
         productoExistente.setDescripcion(producto.getDescripcion());
-
-        if (!imagenFile.isEmpty()) {
-            Path fileNameAndPath = Paths.get(UPLOAD_DIRECTORY, imagenFile.getOriginalFilename());
-            Files.write(fileNameAndPath, imagenFile.getBytes());
-            productoExistente.setImagen("/img/" + imagenFile.getOriginalFilename());
-        }
+        productoExistente.setImagen(producto.getImagen());
         
         productoRepository.save(productoExistente);
         return "redirect:/admin/productos/editar";
     }
 
-    // ... (Métodos de Usuarios) ...
+    // ==========================================
+    // GESTIÓN DE USUARIOS
+    // ==========================================
+
     @GetMapping("/usuarios")
     public String gestionarUsuarios(Model model) {
         model.addAttribute("usuarios", usuarioRepository.findAll());
@@ -130,22 +120,63 @@ public class AdminController {
     @PostMapping("/usuarios/crear")
     public String crearUsuario(@ModelAttribute("usuario") Usuario usuario) {
         usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-        usuario.setRoles("ROLE_USER");
+        
+        // Respetamos el rol que viene del formulario, si no viene, ponemos USER por defecto
+        if (usuario.getRoles() == null || usuario.getRoles().isEmpty()) {
+             usuario.setRoles("ROLE_USER");
+        }
+
         usuarioRepository.save(usuario);
         return "redirect:/admin/usuarios";
     }
 
-    // ... (Métodos de Pedidos) ...
-    @GetMapping("/pedidos")
+    @PostMapping("/usuarios/cambiar-rol")
+    public String cambiarRolUsuario(@RequestParam("id") Long id, @RequestParam("rol") String rol) {
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
+            usuario.setRoles(rol);
+            usuarioRepository.save(usuario);
+        }
+        return "redirect:/admin/usuarios";
+    }
+
+    // --- NUEVO MÉTODO: ELIMINAR USUARIO ---
+    @PostMapping("/usuarios/eliminar")
+    public String eliminarUsuario(@RequestParam("id") Long id, Principal principal) {
+        Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
+
+        if (usuarioOpt.isPresent()) {
+            Usuario usuario = usuarioOpt.get();
+
+            // Seguridad: No permitir que el admin se borre a sí mismo mientras está logueado
+            if (principal != null && principal.getName().equals(usuario.getEmail())) {
+                // Podrías redirigir con un mensaje de error (?error=...)
+                return "redirect:/admin/usuarios";
+            }
+
+            // Al borrar el usuario, se borrarán sus pedidos automáticamente 
+            // gracias al CascadeType.ALL en Usuario.java
+            usuarioRepository.delete(usuario);
+        }
+        return "redirect:/admin/usuarios";
+    }
+
+
+    // ==========================================
+    // GESTIÓN DE PEDIDOS
+    // ==========================================
+
+   @GetMapping("/pedidos")
     public String verPedidos(Model model) {
-        model.addAttribute("pedidos", pedidoRepository.findAll());
+        // CAMBIO AQUÍ: Usamos findAllByOrderByFechaDesc() en lugar de findAll()
+        model.addAttribute("pedidos", pedidoRepository.findAllByOrderByFechaDesc());
         return "admin/ver-pedidos";
     }
     
     @GetMapping("/pedidos/detalle/{id}")
     public String verDetallePedido(@PathVariable Long id, Model model) {
         Pedido pedido = pedidoRepository.findById(id).orElse(null);
-        
         if (pedido != null) {
             model.addAttribute("pedido", pedido);
             model.addAttribute("usuario", pedido.getUsuario());
@@ -154,33 +185,30 @@ public class AdminController {
         return "admin/ver-detalle-pedido";
     }
 
-    // --- 2. MÉTODO DE BORRADO MODIFICADO ---
+    @PostMapping("/pedidos/actualizar-estado")
+    public String actualizarEstadoPedido(@RequestParam("pedidoId") Long pedidoId, 
+                                         @RequestParam("estado") String estado) {
+        Optional<Pedido> pedidoOpt = pedidoRepository.findById(pedidoId);
+        if (pedidoOpt.isPresent()) {
+            Pedido pedido = pedidoOpt.get();
+            pedido.setEstado(estado);
+            pedidoRepository.save(pedido);
+        }
+        return "redirect:/admin/pedidos/detalle/" + pedidoId;
+    }
+
     @Transactional
     @GetMapping("/pedidos/delete/{id}")
     public String deletePedido(@PathVariable Long id) {
-        
-        // Usamos Optional para asegurarnos de que el pedido exista
         Optional<Pedido> pedidoOpt = pedidoRepository.findById(id);
-        
         if (pedidoOpt.isPresent()) {
             Pedido pedido = pedidoOpt.get();
-            
-            // La anotación @Transactional se asegura de que podamos cargar el usuario 'LAZY'
             Usuario usuario = pedido.getUsuario(); 
-            
             if (usuario != null) {
-                // Maniobra clave: rompemos la relación desde el lado del Usuario
-                // Le decimos a la lista del Usuario que "suelte" este pedido
                 usuario.getPedidos().remove(pedido);
-                // No es necesario guardar (save) el usuario, @Transactional lo maneja
             }
-            
-            // Ahora que la relación bidireccional está rota,
-            // podemos borrar el pedido de forma segura.
             pedidoRepository.delete(pedido);
         }
-        
-        // Redirigimos de vuelta a la lista
         return "redirect:/admin/pedidos";
     }
 }

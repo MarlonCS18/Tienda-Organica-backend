@@ -21,8 +21,9 @@
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
                     <li class="nav-item ms-3">
-                        <form th:action="@{/logout}" method="post"><button type="submit"
-                                class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
+                        <form th:action="@{/api/v1/auth/logout}" method="post">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -48,7 +49,7 @@
 
         <div class="row">
             <div class="col-lg-8">
-                
+
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-dark text-white">
                         <h5 class="mb-0">Productos Comprados</h5>
@@ -67,9 +68,12 @@
                                 <tbody>
                                     <tr th:each="item : ${items}">
                                         <td th:text="${item.id}">1</td>
-                                        <td th:text="${item.quantity}">2</td>
-                                        <td th:text="${'S/ ' + #numbers.formatDecimal(item.precio, 1, 2)}">S/ 30.00</td>
-                                        <td th:text="${'S/ ' + #numbers.formatDecimal(item.precio * item.quantity, 1, 2)}">S/ 60.00</td>
+                                        <td th:text="${item.cantidad}">2</td>
+                                        <td th:text="${'S/ ' + #numbers.formatDecimal(item.precioUnitario, 1, 2)}">S/
+                                            30.00</td>
+                                        <td
+                                            th:text="${'S/ ' + #numbers.formatDecimal(item.precioUnitario * item.cantidad, 1, 2)}">
+                                            S/ 60.00</td>
                                     </tr>
                                     <tr th:if="${itemsError}">
                                         <td colspan="4" class="text-danger text-center" th:text="${itemsError}"></td>
@@ -103,10 +107,13 @@
                         <form th:action="@{/admin/pedidos/actualizar-estado}" method="post" class="d-flex gap-2">
                             <input type="hidden" name="pedidoId" th:value="${pedido.id}" />
                             <select name="estado" class="form-select">
-                                <option value="PENDIENTE" th:selected="${pedido.estado == 'PENDIENTE'}">Pendiente</option>
+                                <option value="PENDIENTE" th:selected="${pedido.estado == 'PENDIENTE'}">Pendiente
+                                </option>
                                 <option value="ENVIADO" th:selected="${pedido.estado == 'ENVIADO'}">Enviado</option>
-                                <option value="COMPLETADO" th:selected="${pedido.estado == 'COMPLETADO'}">Completado</option>
-                                <option value="CANCELADO" th:selected="${pedido.estado == 'CANCELADO'}">Cancelado</option>
+                                <option value="COMPLETADO" th:selected="${pedido.estado == 'COMPLETADO'}">Completado
+                                </option>
+                                <option value="CANCELADO" th:selected="${pedido.estado == 'CANCELADO'}">Cancelado
+                                </option>
                             </select>
                             <button type="submit" class="btn btn-success">Actualizar</button>
                         </form>
@@ -116,7 +123,7 @@
             </div>
 
             <div class="col-lg-4">
-                
+
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body">
                         <h5 class="card-title fw-bold">Resumen</h5>
@@ -131,13 +138,14 @@
                             </li>
                             <li class="list-group-item d-flex justify-content-between">
                                 <span>Estado:</span>
-                                <span class="badge" 
-                                      th:classappend="${pedido.estado == 'PENDIENTE'} ? 'bg-warning text-dark' : (${pedido.estado == 'CANCELADO'} ? 'bg-danger' : 'bg-success')"
-                                      th:text="${pedido.estado}">PENDIENTE</span>
+                                <span class="badge"
+                                    th:classappend="${pedido.estado == 'PENDIENTE'} ? 'bg-warning text-dark' : (${pedido.estado == 'CANCELADO'} ? 'bg-danger' : 'bg-success')"
+                                    th:text="${pedido.estado}">PENDIENTE</span>
                             </li>
-                             <li class="list-group-item d-flex justify-content-between">
+                            <li class="list-group-item d-flex justify-content-between">
                                 <span>Total Pagado:</span>
-                                <strong class="text-success fs-5" th:text="${'S/ ' + #numbers.formatDecimal(pedido.total, 1, 2)}"></strong>
+                                <strong class="text-success fs-5"
+                                    th:text="${'S/ ' + #numbers.formatDecimal(pedido.total, 1, 2)}"></strong>
                             </li>
                         </ul>
                     </div>
@@ -150,9 +158,12 @@
                             <li class="list-group-item" th:text="${pedido.nombre + ' ' + pedido.apellidos}"></li>
                             <li class="list-group-item" th:text="${pedido.email}"></li>
                             <li class="list-group-item" th:text="${pedido.telefono}"></li>
-                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'boleta'}" th:text="${'DNI: ' + pedido.dni}"></li>
-                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'factura'}" th:text="${'RUC: ' + pedido.ruc}"></li>
-                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'factura'}" th:text="${'Razón Social: ' + pedido.razonSocial}"></li>
+                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'boleta'}"
+                                th:text="${'DNI: ' + pedido.dni}"></li>
+                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'factura'}"
+                                th:text="${'RUC: ' + pedido.ruc}"></li>
+                            <li class="list-group-item" th:if="${pedido.tipoComprobante == 'factura'}"
+                                th:text="${'Razón Social: ' + pedido.razonSocial}"></li>
                         </ul>
                     </div>
                 </div>
@@ -164,7 +175,8 @@
                             <strong th:text="${pedido.direccion}"></strong><br>
                             <span th:text="${pedido.distrito + ', ' + pedido.provincia}"></span><br>
                             <span th:text="${pedido.departamento}"></span><br>
-                            <em th:if="${pedido.referencia != null && !pedido.referencia.isEmpty()}" th:text="${'Ref: ' + pedido.referencia}"></em>
+                            <em th:if="${pedido.referencia != null && !pedido.referencia.isEmpty()}"
+                                th:text="${'Ref: ' + pedido.referencia}"></em>
                         </address>
                     </div>
                 </div>
@@ -178,4 +190,5 @@
     </footer>
 
 </body>
+
 </html>

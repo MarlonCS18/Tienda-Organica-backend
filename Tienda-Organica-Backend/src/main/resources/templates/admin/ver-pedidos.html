@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org"
-    xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head>
     <meta charset="UTF-8">
@@ -26,8 +25,9 @@
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
                     <li class="nav-item ms-3">
-                        <form th:action="@{/logout}" method="post"><button type="submit"
-                                class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
+                        <form th:action="@{/api/v1/auth/logout}" method="post">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -73,13 +73,14 @@
                                         th:classappend="${pedido.estado == 'PENDIENTE'} ? 'bg-warning text-dark' : 'bg-success'"
                                         th:text="${pedido.estado}">PENDIENTE</span></td>
                                 <td class="text-end">
-                                    <a th:href="@{/admin/pedidos/detalle/{id}(id=${pedido.id})}" class="btn btn-info btn-sm text-white">
+                                    <a th:href="@{/admin/pedidos/detalle/{id}(id=${pedido.id})}"
+                                        class="btn btn-info btn-sm text-white">
                                         <i class="fas fa-eye me-1"></i> Ver Detalle
                                     </a>
-                                    
-                                    <a th:href="@{/admin/pedidos/delete/{id}(id=${pedido.id})}" 
-                                       class="btn btn-danger btn-sm text-white ms-2"
-                                       onclick="return confirm('¿Estás seguro de que quieres borrar este pedido? Esta acción no se puede deshacer.');">
+
+                                    <a th:href="@{/admin/pedidos/delete/{id}(id=${pedido.id})}"
+                                        class="btn btn-danger btn-sm text-white ms-2"
+                                        onclick="return confirm('¿Estás seguro de que quieres borrar este pedido? Esta acción no se puede deshacer.');">
                                         <i class="fas fa-trash me-1"></i> Borrar
                                     </a>
                                 </td>

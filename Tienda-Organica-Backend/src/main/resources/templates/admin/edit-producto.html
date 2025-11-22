@@ -24,8 +24,9 @@
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
                     <li class="nav-item ms-3">
-                        <form th:action="@{/logout}" method="post"><button type="submit"
-                                class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
+                        <form th:action="@{/api/v1/auth/logout}" method="post">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -39,7 +40,6 @@
                         <h2 class="card-title text-center fw-bold mb-4">Editar Producto</h2>
                         <form th:action="@{'/admin/productos/edit/' + ${producto.id}}" th:object="${producto}"
                             method="post">
-
                             <input type="hidden" th:field="*{id}" />
 
                             <div class="mb-3">

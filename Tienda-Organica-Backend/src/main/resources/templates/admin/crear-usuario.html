@@ -24,8 +24,9 @@
                     <li class="nav-item"><a class="nav-link" href="/admin/productos/editar">Productos</a></li>
                     <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuarios</a></li>
                     <li class="nav-item ms-3">
-                        <form th:action="@{/logout}" method="post"><button type="submit"
-                                class="btn btn-outline-light btn-sm">Cerrar Sesión</button></form>
+                        <form th:action="@{/api/v1/auth/logout}" method="post">
+                            <button type="submit" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -38,10 +39,10 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-body p-4">
                         <h2 class="card-title text-center fw-bold mb-4">Crear Nuevo Usuario</h2>
-                        <form th:action="@{/admin/usuarios/nuevo}" th:object="${usuario}" method="post">
+                        <form th:action="@{/admin/usuarios/crear}" th:object="${usuario}" method="post">
                             <div class="mb-3">
                                 <label for="nombreCompleto" class="form-label">Nombre Completo</label>
-                                <input type="text" th:field="*{nombreCompleto}" class="form-control" id="nombreCompleto"
+                                <input type="text" th:field="*{nombre}" class="form-control" id="nombreCompleto"
                                     required>
                             </div>
                             <div class="mb-3">
@@ -55,7 +56,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="rol" class="form-label">Asignar Rol</label>
-                                <select th:field="*{rol}" class="form-select" id="rol" required>
+                                <select th:field="*{roles}" class="form-select" id="rol" required>
                                     <option value="ROLE_USER">Usuario</option>
                                     <option value="ROLE_ADMIN">Administrador</option>
                                 </select>
